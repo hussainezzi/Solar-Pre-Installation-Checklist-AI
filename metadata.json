@@ -1,0 +1,5 @@
+{
+  "name": "Solar Pre-Installation Checklist AI",
+  "description": "A client-side tool for solar installation teams to create custom pre-installation checklists and safety briefings, integrating generative AI for text and images. The application's core functionality is accessible even if the Gemini API key is not found.",
+  "requestFramePermissions": []
+}
