@@ -2,7 +2,7 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import type { InstallationDetails, ChecklistItem } from '../types';
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = "AIzaSyAf6a00_m7aO0iWarM_lG7RYy-pKtqlty4";
 
 if (!API_KEY) {
   console.warn("Gemini API key not found. AI features will be disabled.");
