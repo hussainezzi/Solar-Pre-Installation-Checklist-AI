@@ -1,7 +1,6 @@
-
 import React, { useState, useCallback } from 'react';
 import type { InstallationDetails, ChecklistItem, LoadingStates } from './types';
-import { isAiAvailable, generateHazards, generateVisualWarnings, generateChecklist, generateBriefing } from './services/geminiService';
+import { generateHazards, generateVisualWarnings, generateChecklist, generateBriefing } from './services/geminiService';
 import Header from './components/Header';
 import InstallationForm from './components/InstallationForm';
 import HazardsAssessment from './components/HazardsAssessment';
@@ -10,11 +9,14 @@ import PreInstallationChecklist from './components/PreInstallationChecklist';
 import BriefingSummary from './components/BriefingSummary';
 import ApiKeyWarning from './components/ApiKeyWarning';
 import StepCard from './components/StepCard';
+import Workflow from './components/Workflow';
+import ApiKeyManager from './components/ApiKeyManager';
 
 const App: React.FC = () => {
-  const [aiActive] = useState<boolean>(isAiAvailable());
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [apiKey, setApiKey] = useState<string>(process.env.API_KEY || '');
+  const aiActive = !!apiKey;
 
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [installationDetails, setInstallationDetails] = useState<InstallationDetails | null>(null);
   const [hazards, setHazards] = useState<string>('');
   const [visualWarnings, setVisualWarnings] = useState<string[]>([]);
@@ -38,32 +40,37 @@ const App: React.FC = () => {
 
     if (aiActive) {
       setLoading(prev => ({ ...prev, hazards: true }));
-      const hazardText = await generateHazards(details);
+      const hazardText = await generateHazards(apiKey, details);
       setHazards(hazardText);
       setLoading(prev => ({ ...prev, hazards: false }));
+      
+      if (hazardText.startsWith('Error')) {
+        setCurrentStep(2);
+        return;
+      }
       
       setCurrentStep(3);
 
       setLoading(prev => ({ ...prev, visuals: true }));
-      const warnings = await generateVisualWarnings(hazardText);
+      const warnings = await generateVisualWarnings(apiKey, hazardText);
       setVisualWarnings(warnings);
       setLoading(prev => ({ ...prev, visuals: false }));
       
       setCurrentStep(4);
       
       setLoading(prev => ({ ...prev, checklist: true }));
-      const checklist = await generateChecklist(hazardText);
+      const checklist = await generateChecklist(apiKey, hazardText);
       setChecklistItems(checklist);
       setLoading(prev => ({ ...prev, checklist: false }));
     }
-  }, [aiActive]);
+  }, [aiActive, apiKey]);
 
   const handleGenerateBriefing = useCallback(async () => {
     if (!installationDetails) return;
     setCurrentStep(5);
     if (aiActive) {
       setLoading(prev => ({ ...prev, briefing: true }));
-      const summary = await generateBriefing(installationDetails, hazards, checklistItems);
+      const summary = await generateBriefing(apiKey, installationDetails, hazards, checklistItems);
       setBriefingSummary(summary);
       setLoading(prev => ({ ...prev, briefing: false }));
     } else {
@@ -85,13 +92,16 @@ ${checklistItems.length > 0 ? checklistItems.map(item => `- [${item.completed ? 
         `;
         setBriefingSummary(briefingTemplate.trim());
     }
-  }, [aiActive, installationDetails, hazards, checklistItems]);
+  }, [aiActive, apiKey, installationDetails, hazards, checklistItems]);
 
   return (
     <div className="min-h-screen text-gray-800">
       <Header />
       {!aiActive && <ApiKeyWarning />}
       <main className="container mx-auto p-4 md:p-8">
+        <Workflow />
+        <ApiKeyManager apiKey={apiKey} setApiKey={setApiKey} />
+
         <div className="grid grid-cols-1 gap-8">
           <StepCard title="Installation Specifics" step={1} active={currentStep >= 1}>
             <InstallationForm onSubmit={handleFormSubmit} aiActive={aiActive} isLoading={loading.hazards}/>
